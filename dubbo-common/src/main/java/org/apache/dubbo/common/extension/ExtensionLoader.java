@@ -69,8 +69,9 @@ public class ExtensionLoader<T> {
 
     private static final Pattern NAME_SEPARATOR = Pattern.compile("\\s*[,]+\\s*");
 
+    //缓存ExtensionLoader实例
     private static final ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<Class<?>, ExtensionLoader<?>>();
-
+    //class名称对应实例对象
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<Class<?>, Object>();
 
     // ==============================
@@ -84,6 +85,7 @@ public class ExtensionLoader<T> {
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<Map<String, Class<?>>>();
 
     private final Map<String, Object> cachedActivates = new ConcurrentHashMap<String, Object>();
+    //Holder放的是SPI扩展点的实例，name是配置的key
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<String, Holder<Object>>();
     private final Holder<Object> cachedAdaptiveInstance = new Holder<Object>();
     private volatile Class<?> cachedAdaptiveClass = null;
@@ -104,13 +106,23 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * getExtensionLoader:只是实例化绑定type的ExtensionLoader，其他没做什么事情 <br/>
+     *
+     * @author yibai 2018/11/13 12:38
+     * @param type type
+     * @return org.apache.dubbo.common.extension.ExtensionLoader<T>
+     * @since JDK 1.7
+     **/
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         if (type == null) {
             throw new IllegalArgumentException("Extension type == null");
         }
+        //是否是接口
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");
         }
+        //接口上是否有SPI注解
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type(" + type +
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
@@ -305,6 +317,14 @@ public class ExtensionLoader<T> {
      * will be thrown.
      */
     @SuppressWarnings("unchecked")
+    /**
+     * getExtension:根据SPI配置文件中的自定义ke获取对应的扩展点实现 <br/>
+     *
+     * @author yibai 2018/11/13 12:40
+     * @param name name
+     * @return T
+     * @since JDK 1.7
+     **/
     public T getExtension(String name) {
         if (name == null || name.length() == 0) {
             throw new IllegalArgumentException("Extension name == null");
@@ -322,7 +342,7 @@ public class ExtensionLoader<T> {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
-                    instance = createExtension(name);
+                    instance = createExtension(name);  //实例化SPI扩展点
                     holder.set(instance);
                 }
             }
@@ -500,17 +520,26 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * createExtension:根据配置key实例化SPI扩展点 <br/>
+     *
+     * @author yibai 2018/11/13 13:00
+     * @param name name
+     * @return T
+     * @since JDK 1.7
+     **/
     private T createExtension(String name) {
-        Class<?> clazz = getExtensionClasses().get(name);
+        Class<?> clazz = getExtensionClasses().get(name); //通过配置名称找到class对象，读取指定配置文件来完成
         if (clazz == null) {
             throw findException(name);
         }
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
-                EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
+                EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance()); //实例化
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            //类实例化以后，会查看有没有对其他扩展点的应用，如果有的话就调用injectExtension方法，去注入其他的扩展类，这样就达到了它所说的AOP的功能。
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
@@ -587,6 +616,20 @@ public class ExtensionLoader<T> {
     }
 
     // synchronized in getExtensionClasses
+
+    /**
+     * loadExtensionClasses:
+     * 加载SPI注解，注解的value只能有一个，也就是默认扩展实现类。
+     * Dubbo会依次扫描META-INF/dubbo/internal/、META-INF/dubbo/、
+     * META-INF/services/ 这三个文件夹，优先级正好相反，看有没有相应的SPI文件、通过loadFile方法进行扫描和加载。
+     * <p>
+     * <br/>
+     *
+     * @param
+     * @return java.util.Map<java.lang.String,java.lang.Class<?>>
+     * @author yibai 2018/11/13 13:04
+     * @since JDK 1.7
+     **/
     private Map<String, Class<?>> loadExtensionClasses() {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
