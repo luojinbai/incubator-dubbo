@@ -647,7 +647,13 @@ public class ExtensionLoader<T> {
         }
 
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
+        /**
+         private static final String SERVICES_DIRECTORY = "META-INF/services/";
+         private static final String DUBBO_DIRECTORY = "META-INF/dubbo/";
+         private static final String DUBBO_INTERNAL_DIRECTORY = DUBBO_DIRECTORY + "internal/";
+         */
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName());
+        /* replace org.apache支持捐给apache前后的dubbo版本的SPI*/
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
         loadDirectory(extensionClasses, DUBBO_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, DUBBO_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
