@@ -70,6 +70,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public /**final**/ class URL implements Serializable {
 
+
+//    URL 采用标准格式：protocol://username:password@host:port/path?key=value&key=value 。
+
     private static final long serialVersionUID = -1985165475234910535L;
 
     private final String protocol;
@@ -174,6 +177,9 @@ public /**final**/ class URL implements Serializable {
      *
      * @param url URL string
      * @return URL instance
+     *
+     * URL 采用标准格式：protocol://username:password@host:port/path?key=value&key=value 。
+     *
      * @see URL
      */
     public static URL valueOf(String url) {
